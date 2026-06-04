@@ -14,21 +14,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. Скачиваем твой код с Kaggle
-      - name: Получить ноутбук
+      # 1. Скачиваем твой код из репозитория
+      - name: Получить репозиторий
         uses: actions/checkout@v4
       
-      # 2. Учим GitHub говорить с Kaggle
-      - name: Настройка Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+      # 2. Учим GitHub говорить с Kaggle (старый способ — через kaggle.json)
+      - name: Настройка Kaggle API
+        run: |
+          # Создаём папку для настроек Kaggle
+          mkdir -p ~/.kaggle
+          # Сохраняем твой kaggle.json в нужное место
+          echo '${{ secrets.KAGGLE_JSON }}' > ~/.kaggle/kaggle.json
+          # Защищаем файл от посторонних
+          chmod 600 ~/.kaggle/kaggle.json
+          # Устанавливаем официальный клиент Kaggle
+          pip install kaggle
           
-      - name: Установка соединения с Kaggle
-        run: pip install kaggle
-        
       # 3. Отправляем команду на завод (Kaggle)
-      - name: Запуск станка
-        env:
-          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_TOKEN }}
-        run: kaggle kernels push -p ./notebook
+      - name: Запуск генерации на Kaggle
+        run: |
+          # Проверяем, что папка notebook существует
+          if [ -d "./notebook" ]; then
+            echo "Папка notebook найдена, запускаю..."
+            kaggle kernels push -p ./notebook
+          else
+            echo "❌ Ошибка: папка 'notebook' не найдена!"
+            echo "Создай папку 'notebook' и положи туда твой .ipynb файл"
+            exit 1
+          fi
