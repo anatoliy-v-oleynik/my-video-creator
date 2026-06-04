@@ -3,12 +3,14 @@
   "title": "my-video-creator",
   "code_file": "script.py",
   "language": "python",
-  "kernel_type": "notebook",
+  "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_tpu": "false",
   "enable_internet": "true",
-  "dataset_sources": [],
+  "dataset_sources": [
+    "hunyuanvideo-community/hunyuanvideo-1.5-diffusers-720p_t2v"
+  ],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []
