@@ -18,16 +18,15 @@ jobs:
       - name: Получить репозиторий
         uses: actions/checkout@v4
       
-      # 2. Учим GitHub говорить с Kaggle (старый способ — через kaggle.json)
+      # 2. Учим GitHub говорить с Kaggle (Безопасный способ)
       - name: Настройка Kaggle API
+        env:
+          KAGGLE_SECRET_DATA: ${{ secrets.KAGGLE_JSON }}
         run: |
-          # Создаём папку для настроек Kaggle
           mkdir -p ~/.kaggle
-          # Сохраняем твой kaggle.json в нужное место
-          echo '${{ secrets.KAGGLE_JSON }}' > ~/.kaggle/kaggle.json
-          # Защищаем файл от посторонних
+          # Записываем переменную окружения напрямую в файл без использования echo
+          printf "%s" "$KAGGLE_SECRET_DATA" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          # Устанавливаем официальный клиент Kaggle
           pip install kaggle
           
       # 3. Отправляем команду на завод (Kaggle)
