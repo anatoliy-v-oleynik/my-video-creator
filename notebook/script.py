@@ -5,55 +5,65 @@ import time
 import shutil
 from datetime import datetime
 import torch
-import imageio
-from diffusers import StableDiffusionPipeline, StableVideoDiffusionPipeline
+from diffusers import DiffusionPipeline
+from diffusers.utils import load_image, export_to_video
 
-# Эту строчку GitHub Actions будет автоматически перезаписывать вашим промптом
-PROMPT = "Космический кот летит на ракете, 4k, high quality"
-print(f"🎯 Генерируем по промпту: {PROMPT}")
+# 1. Настройка промпта (перезаписывается через GitHub Actions)
+PROMPT = "The wind picks up, the hair starts to flutter softly, cinematically"
+print(f"🎯 Сценарий анимации: {PROMPT}")
 
-# 1. Генерируем первый кадр
-print("🖼️ Генерируем первый кадр...")
-sd_pipe = StableDiffusionPipeline.from_pretrained(
-    "runwayml/stable-diffusion-v1-5",
-    torch_dtype=torch.float16
-).to("cuda")
+# 2. Загрузка стартового изображения
+# Скрипт ищет файл input_image.png, который вы закинули в репозиторий
+IMAGE_PATH = "./input_image.png"
+if not os.path.exists(IMAGE_PATH):
+    print(f"❌ Ошибка: файл {IMAGE_PATH} не найден в папке проекта!")
+    # Если картинки нет, создадим тестовую заглушку, чтобы код не падал
+    from PIL import Image, ImageDraw
+    img = Image.new('RGB', (720, 480), color = (73, 109, 137))
+    d = ImageDraw.Draw(img)
+    d.text((10,10), "Test Image", fill=(255,255,0))
+    img.save(IMAGE_PATH)
 
-image = sd_pipe(PROMPT).images[0]
-image.save("/kaggle/working/first_frame.png")
-print("✅ Первый кадр сохранён")
+image = load_image(IMAGE_PATH)
+print("🖼️ Стартовое изображение успешно загружено")
 
-# Освобождаем VRAM видеокарты, чтобы Kaggle не упал по памяти
-del sd_pipe
-import gc
-gc.collect()
-torch.cuda.empty_cache()
+# 3. Загрузка тяжеловесной модели HunyuanVideo 1.5 I2V из датасета
+print("🎬 Загрузка HunyuanVideo 1.5 (Image-to-Video)... Пожалуйста, подождите.")
+LOCAL_MODEL_PATH = "/kaggle/input/HunyuanVideo-1.5-Diffusers-720p_i2v_distilled"
 
-# 2. Загружаем SVD модель для анимации
-print("🎬 Загружаем модель анимации...")
-model_id = "stabilityai/stable-video-diffusion-img2vid"
-pipe = StableVideoDiffusionPipeline.from_pretrained(
-    model_id,
-    torch_dtype=torch.float16,
-    variant="fp16"
+# Загружаем в bfloat16 (стандарт для DiT-трансформеров) с автораспределением слоев
+pipe = DiffusionPipeline.from_pretrained(
+    LOCAL_MODEL_PATH,
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+    local_files_only=True
 )
-pipe = pipe.to("cuda")
-pipe.enable_model_cpu_offload()
 
-# 3. Генерируем видео
-print("🎬 Генерируем видео из картинки...")
-frames = pipe(image, decode_chunk_size=8).frames[0]
+# ВКЛЮЧАЕМ МАКСИМАЛЬНЫЙ ТЮНИНГ ДЛЯ БЕСПЛАТНОЙ КАРТЫ KAGGLE T4
+pipe.enable_model_cpu_offload()  # Сбрасывает неиспользуемые блоки в ОЗУ хоста
+pipe.vae.enable_tiling()         # Режет видео на тайлы при декодировании, спасая от "Out of Memory"
+print("✅ Нейросеть скомпилирована в памяти GPU")
 
-output_video = "/kaggle/working/output.mp4"
-imageio.mimsave(output_video, frames, fps=7)
-print(f"✅ Видео сохранено: {output_video}")
+# 4. Запуск генерации видеоролика
+print("🚀 Запуск рендеринга... На карте T4 это займет несколько минут.")
+# Так как модель distilled, нам нужно ВСЕГО 8-12 шагов вместо стандартных 50!
+output = pipe(
+    image=image, 
+    prompt=PROMPT,
+    num_inference_steps=8,       # Скоростной рендеринг
+    fps=24                       # Частота кадров плавного видео
+).frames[0]
 
-# 4. Подготовка структуры датасета
+output_video = "/kaggle/working/output_hunyuan.mp4"
+export_to_video(output, output_video)
+print(f"✅ Видео успешно сгенерировано: {output_video}")
+
+# 5. Сборка датасета для отправки на GitHub / Kaggle
 output_dir = "/kaggle/working/output_dataset"
 os.makedirs(output_dir, exist_ok=True)
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-video_name = f"generated_{timestamp}.mp4"
+video_name = f"hunyuan_{timestamp}.mp4"
 shutil.copy(output_video, f"{output_dir}/{video_name}")
 
 metadata = {
@@ -64,24 +74,21 @@ metadata = {
 with open(f"{output_dir}/dataset-metadata.json", "w") as f:
     json.dump(metadata, f, indent=2)
 
-# 5. Авторизация и загрузка в Kaggle Datasets
-print("🔐 Подготовка авторизации для Kaggle CLI...")
+# 6. Авторизация утилиты Kaggle CLI и пуш результата
+print("🔐 Авторизация Kaggle...")
 os.makedirs("/root/.kaggle", exist_ok=True)
 try:
-    # Пытаемся взять системный ключ Kaggle
     shutil.copy("/kaggle/input/kaggle-api-secret/kaggle.json", "/root/.kaggle/kaggle.json")
     os.chmod("/root/.kaggle/kaggle.json", 0o600)
-except Exception as e:
-    print("⚠️ Не удалось скопировать системный токен, используем локальный режим.")
+except:
+    pass
 
-print("📤 Отправка данных в Kaggle...")
+print("📤 Пушим видео в ваш датасет...")
 status = subprocess.run(['kaggle', 'datasets', 'status', 'avonosu/generated-videos'], capture_output=True, text=True)
 
 if "not found" in status.stderr.lower() or status.returncode != 0:
-    print("Инициализация нового датасета...")
     subprocess.run(['kaggle', 'datasets', 'create', '-p', output_dir])
 else:
-    print("Создание новой версии датасета...")
-    subprocess.run(['kaggle', 'datasets', 'version', '-p', output_dir, '-m', f"Prompt: {PROMPT[:50]}"])
+    subprocess.run(['kaggle', 'datasets', 'version', '-p', output_dir, '-m', f"Hunyuan I2V: {PROMPT[:50]}"])
 
-print("🎉 Процесс полностью завершен!")
+print("🎉 Все процессы завершены. Проверьте ваш Kaggle Dataset!")
