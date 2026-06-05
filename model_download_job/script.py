@@ -15,6 +15,7 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 REPO = "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v"
 
 print("⏳ Скачивание всех компонентов модели напрямую с Hugging Face...")
+# snapshot_download сам скачает все папки (vae, transformer, scheduler) без ошибок 404!
 snapshot_download(
     repo_id=REPO,
     local_dir=MODEL_DIR,
