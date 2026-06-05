@@ -1,0 +1,30 @@
+name: '1. Подготовить датасет Hunyuan'
+
+on:
+  workflow_dispatch: # Показывает кнопку запуска вручную в интерфейсе Actions
+
+jobs:
+  prepare-dataset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получить репозиторий
+        uses: actions/checkout@v4
+      
+      - name: Настройка Kaggle API
+        env:
+          KAGGLE_SECRET_DATA: ${{ secrets.KAGGLE_JSON }}
+        run: |
+          mkdir -p ~/.kaggle
+          printf "%s" "$KAGGLE_SECRET_DATA" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          pip install kaggle
+          
+      - name: Запуск скачивания на Kaggle
+        run: |
+          if [ -d "./download_job" ]; then
+            kaggle kernels push -p ./download_job
+            echo "🚀 Процесс скачивания запущен на Kaggle! Зайдите в ваш аккаунт Kaggle Datasets через 10-15 минут."
+          else
+            echo "❌ Ошибка: папка 'download_job' не найдена!"
+            exit 1
+          fi
