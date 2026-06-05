@@ -5,6 +5,12 @@ import shutil
 import urllib.request
 from datetime import datetime
 import torch
+
+# Устанавливаем accelerate (нужен для cpu_offload)
+import subprocess
+import sys
+subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "accelerate"])
+
 from diffusers import HunyuanVideo15ImageToVideoPipeline
 from diffusers.utils import export_to_video, load_image
 
