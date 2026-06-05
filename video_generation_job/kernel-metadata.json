@@ -8,8 +8,8 @@
   "enable_gpu": "true",
   "enable_tpu": "false",
   "enable_internet": "true",
-  "dataset_sources": [
-    "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-720p_i2v_distilled"
+  "model_sources": [
+    "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v"
   ],
   "competition_sources": [],
   "kernel_sources": [],
