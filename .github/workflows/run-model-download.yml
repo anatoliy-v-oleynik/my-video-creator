@@ -1,7 +1,25 @@
 name: '1. Подготовить датасет Hunyuan'
 
 on:
-  workflow_dispatch: # Показывает кнопку запуска вручную в интерфейсе Actions
+  workflow_dispatch:
+    inputs:
+      model_to_download:
+        description: 'Какую модель скачать?'
+        required: true
+        type: choice
+        options:
+          - 'hunyuan-video-1.5-480p'
+          - 'hunyuan-video-1.5-720p'
+          - 'easyocr'
+          - 'sad-talker'
+          - 'live-portrait'
+          - 'all-models'
+        default: 'hunyuan-video-1.5-480p'
+      force_redownload:
+        description: 'Перескачать даже если уже есть?'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   prepare-dataset:
@@ -19,12 +37,71 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           pip install kaggle
           
+      - name: Создать временный конфиг с выбранной моделью
+        run: |
+          cd ./model_download_job
+          
+          # Сохраняем оригинальный конфиг
+          cp models_config.json models_config.json.bak
+          
+          # Создаём новый конфиг только с выбранной моделью
+          MODEL_NAME="${{ github.event.inputs.model_to_download }}"
+          FORCE="${{ github.event.inputs.force_redownload }}"
+          
+          echo "🎯 Выбрана модель: $MODEL_NAME"
+          
+          # Используем Python для фильтрации конфига
+          python3 << EOF
+          import json
+          
+          with open('models_config.json', 'r') as f:
+              config = json.load(f)
+          
+          # Создаём новый конфиг
+          new_config = {'models': []}
+          
+          if '$MODEL_NAME' == 'all-models':
+              # Включаем все модели
+              for model in config['models']:
+                  model['enabled'] = True
+                  if '$FORCE' == 'true':
+                      model['force'] = True
+                  new_config['models'].append(model)
+          else:
+              # Включаем только выбранную модель
+              for model in config['models']:
+                  if model['name'] == '$MODEL_NAME':
+                      model['enabled'] = True
+                      if '$FORCE' == 'true':
+                          model['force'] = True
+                      new_config['models'].append(model)
+                      break
+          
+          with open('models_config.json', 'w') as f:
+              json.dump(new_config, f, indent=2)
+          
+          print(f"✅ Конфиг обновлён, включена модель: $MODEL_NAME")
+          EOF
+          
+          echo "📋 Содержимое конфига:"
+          cat models_config.json
+          
       - name: Запуск скачивания на Kaggle
         run: |
           if [ -d "./model_download_job" ]; then
+            echo "🚀 Запускаем скачивание модели ${{ github.event.inputs.model_to_download }} на Kaggle..."
             kaggle kernels push -p ./model_download_job
-            echo "🚀 Процесс скачивания запущен на Kaggle! Зайдите в ваш аккаунт Kaggle Datasets через 10-15 минут."
+            echo "✅ Процесс скачивания запущен!"
+            echo "📊 Следите за прогрессом в Kaggle:"
+            echo "   https://www.kaggle.com/avonosu/model-downloader"
           else
             echo "❌ Ошибка: папка 'model_download_job' не найдена!"
             exit 1
           fi
+          
+      - name: Восстановить оригинальный конфиг
+        if: always()
+        run: |
+          cd ./model_download_job
+          mv models_config.json.bak models_config.json 2>/dev/null || true
+          echo "✅ Оригинальный конфиг восстановлен"
