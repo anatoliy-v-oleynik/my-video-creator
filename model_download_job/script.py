@@ -20,7 +20,7 @@ os.makedirs(TRANSFORMER_DIR, exist_ok=True)
 os.makedirs(ENCODERS_DIR, exist_ok=True)
 os.makedirs(VAE_DIR, exist_ok=True)
 
-REPO = "tencent/HunyuanVideo"
+REPO = "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v"
 
 # Точный список файлов оригинальной модели, которые нам нужны
 files_to_download = [
