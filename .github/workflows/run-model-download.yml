@@ -2,25 +2,6 @@ name: '1. Скачать модель в датасет'
 
 on:
   workflow_dispatch:
-    inputs:
-      model_url:
-        description: |
-          🔗 Hugging Face URL или ID модели
-          
-          Примеры:
-          - hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v
-          - runwayml/stable-diffusion-v1-5
-          - https://huggingface.co/stabilityai/stable-video-diffusion-img2vid
-          
-          (Оставьте пустым для модели по умолчанию)
-        required: false
-        type: string
-        default: 'hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v'
-      dataset_name:
-        description: '📦 Название датасета (куда сохранить модель)'
-        required: false
-        type: string
-        default: 'hunyuan15-480p-model'
 
 jobs:
   prepare-dataset:
@@ -38,42 +19,12 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           pip install kaggle
           
-      - name: Создать конфиг для скачивания
-        run: |
-          cd ./model_download_job
-          
-          # Получаем URL модели (очищаем от лишнего)
-          MODEL_URL="${{ github.event.inputs.model_url }}"
-          DATASET_NAME="${{ github.event.inputs.dataset_name }}"
-          
-          # Убираем https://huggingface.co/ если есть
-          MODEL_ID=$(echo "$MODEL_URL" | sed 's|https://huggingface.co/||g')
-          
-          echo "🎯 Модель: $MODEL_ID"
-          echo "📦 Датасет: avonosu/$DATASET_NAME"
-          
-          # Создаём временный конфиг
-          cat > model_config.json << EOF
-          {
-            "model": {
-              "name": "$DATASET_NAME",
-              "repo_id": "$MODEL_ID",
-              "dataset_id": "avonosu/$DATASET_NAME",
-              "enabled": true
-            }
-          }
-          EOF
-          
-          echo "✅ Конфиг создан:"
-          cat model_config.json
-          
       - name: Запуск скачивания на Kaggle
         run: |
           if [ -d "./model_download_job" ]; then
             echo "🚀 Запускаем скачивание модели..."
             kaggle kernels push -p ./model_download_job
             echo "✅ Процесс запущен!"
-            echo "📊 Следите за прогрессом: https://www.kaggle.com/avonosu/model-downloader"
           else
             echo "❌ Ошибка: папка 'model_download_job' не найдена!"
             exit 1
