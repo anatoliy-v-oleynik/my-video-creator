@@ -36,14 +36,16 @@ print("🖼️ Стартовое изображение готово к ани�
 print("🎬 Загрузка HunyuanVideo 1.5 480p из локального репозитория...")
 
 # ИСПРАВЛЕНО: Путь полностью маленькими буквами
-LOCAL_MODEL_PATH = "/kaggle/input/hunyuanvideo-1.5-diffusers-480p_i2v"
+# Загружаем модель HunyuanVideo 1.5 480p I2V напрямую из подключенных моделей Kaggle
+print("🎬 Загрузка HunyuanVideo 1.5 480p из локального репозитория...")
+LOCAL_MODEL_PATH = "/kaggle/input/HunyuanVideo-1.5-Diffusers-480p_i2v"
 
-# ИСПРАВЛЕНО: Возвращаем нативный bfloat16 (карты T4 работают с ним идеально)
 pipe = DiffusionPipeline.from_pretrained(
     LOCAL_MODEL_PATH,
     torch_dtype=torch.bfloat16,
-    local_files_only=True
-).to("cuda")
+    device_map="auto",
+    local_files_only=True # Работаем полностью локально, без интернета!
+)
 
 # Оптимизация памяти
 pipe.enable_model_cpu_offload()
