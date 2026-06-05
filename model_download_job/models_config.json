@@ -2,23 +2,55 @@
   "models": [
     {
       "name": "hunyuan-video-1.5-480p",
-      "display_name": "HunyuanVideo 1.5 480p I2V",
+      "display_name": "🎬 HunyuanVideo 1.5 480p (Image-to-Video)",
       "repo_type": "huggingface",
       "repo_id": "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v",
       "dataset_id": "avonosu/hunyuan15-480p-model",
-      "description": "Image-to-Video model for 480p generation",
-      "enabled": true,
+      "description": "Генерация видео из картинки, качество 480p, 5-10 минут на T4",
+      "size_gb": 8.5,
+      "enabled": false,
       "ignore_patterns": ["*.bin", "*.msgpack"]
     },
     {
       "name": "hunyuan-video-1.5-720p",
-      "display_name": "HunyuanVideo 1.5 720p I2V",
+      "display_name": "🎬 HunyuanVideo 1.5 720p (Image-to-Video, высокое качество)",
       "repo_type": "huggingface",
       "repo_id": "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-720p_i2v_distilled",
       "dataset_id": "avonosu/hunyuan15-720p-model",
-      "description": "Image-to-Video model for 720p generation (requires more VRAM)",
+      "description": "Генерация видео из картинки, качество 720p, требуется больше VRAM",
+      "size_gb": 12.5,
       "enabled": false,
       "ignore_patterns": ["*.bin", "*.msgpack"]
+    },
+    {
+      "name": "easyocr",
+      "display_name": "🔍 EasyOCR (Распознавание текста)",
+      "repo_type": "pip",
+      "package_name": "easyocr",
+      "dataset_id": "avonosu/easyocr-model",
+      "description": "Извлечение текста из изображений на 80+ языках",
+      "size_gb": 1.2,
+      "enabled": false
+    },
+    {
+      "name": "sad-talker",
+      "display_name": "🗣️ SadTalker (Анимация лиц по аудио)",
+      "repo_type": "github",
+      "repo_url": "https://github.com/OpenTalker/SadTalker.git",
+      "dataset_id": "avonosu/sadtalker-model",
+      "description": "Оживление портрета под аудиодорожку",
+      "size_gb": 2.5,
+      "enabled": false
+    },
+    {
+      "name": "live-portrait",
+      "display_name": "🎭 LivePortrait (Реалистичная анимация лиц)",
+      "repo_type": "huggingface",
+      "repo_id": "KwaiVGI/LivePortrait",
+      "dataset_id": "avonosu/liveportrait-model",
+      "description": "Мгновенная анимация лиц с реалистичной мимикой",
+      "size_gb": 1.8,
+      "enabled": false
     }
   ]
 }
