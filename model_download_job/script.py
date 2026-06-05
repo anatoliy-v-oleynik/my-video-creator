@@ -4,6 +4,19 @@ import subprocess
 import shutil
 
 print("📥 Начинаем скачивание модели HunyuanVideo 1.5 480p i2v для сюжетов...")
+
+# ==========================================================
+# ЖЕСТКАЯ ОЧИСТКА СТАРЫХ КЭШЕЙ (ПРОТИВ БАГОВ СЕССИИ KAGGLE)
+# ==========================================================
+print("🧹 Очистка старых системных кэшей и временных папок...")
+shutil.rmtree("/root/.cache/huggingface", ignore_errors=True)
+shutil.rmtree("/tmp", ignore_errors=True)
+shutil.rmtree("/kaggle/working", ignore_errors=True)
+
+# Заново создаем чистую рабочую директорию
+os.makedirs("/kaggle/working", exist_ok=True)
+# ==========================================================
+
 subprocess.run(["pip", "install", "-q", "huggingface_hub"])
 from huggingface_hub import snapshot_download
 
@@ -15,7 +28,6 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 REPO = "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v"
 
 print("⏳ Скачивание всех компонентов модели напрямую с Hugging Face...")
-# snapshot_download сам скачает все папки (vae, transformer, scheduler) без ошибок 404!
 snapshot_download(
     repo_id=REPO,
     local_dir=MODEL_DIR,
