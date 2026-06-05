@@ -3,7 +3,7 @@ import json
 import subprocess
 import time
 import shutil
-import urllib.request  # Добавили обязательный импорт для скачивания
+import urllib.request
 from datetime import datetime
 import torch
 from diffusers import DiffusionPipeline
@@ -34,20 +34,21 @@ print("🖼️ Стартовое изображение готово к ани�
 
 # Загрузка HunyuanVideo 1.5 480p из локального репозитория Kaggle
 print("🎬 Загрузка HunyuanVideo 1.5 480p из локального репозитория...")
-LOCAL_MODEL_PATH = "/kaggle/input/HunyuanVideo-1.5-Diffusers-480p_i2v"
 
-# Исправлено: вместо device_map="auto" загружаем напрямую в cuda
-# Исправлено: вместо torch.bfloat16 используем torch.float16 для совместимости с картой P100
+# ИСПРАВЛЕНО: Путь полностью маленькими буквами
+LOCAL_MODEL_PATH = "/kaggle/input/hunyuanvideo-1.5-diffusers-480p_i2v"
+
+# ИСПРАВЛЕНО: Возвращаем нативный bfloat16 (карты T4 работают с ним идеально)
 pipe = DiffusionPipeline.from_pretrained(
     LOCAL_MODEL_PATH,
-    torch_dtype=torch.float16,
+    torch_dtype=torch.bfloat16,
     local_files_only=True
 ).to("cuda")
 
-# Оптимизация памяти для Kaggle
+# Оптимизация памяти
 pipe.enable_model_cpu_offload()
 pipe.vae.enable_tiling()
-print("✅ Нейросеть успешно скомпилирована в GPU")
+print("✅ Нейросеть успешно скомпилирована в GPU T4")
 
 # Запуск рендеринга
 print("🚀 Запуск рендеринга... Это займет несколько минут.")
