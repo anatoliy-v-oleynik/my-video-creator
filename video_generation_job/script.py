@@ -27,16 +27,15 @@ if not os.path.exists(IMAGE_PATH):
 image = load_image(IMAGE_PATH)
 print("🖼️ Стартовое изображение успешно загружено")
 
-# 3. Загрузка тяжеловесной модели HunyuanVideo 1.5 I2V из датасета
-print("🎬 Загрузка HunyuanVideo 1.5 (Image-to-Video)... Пожалуйста, подождите.")
-LOCAL_MODEL_PATH = "/kaggle/input/HunyuanVideo-1.5-Diffusers-720p_i2v_distilled"
+# Загружаем модель HunyuanVideo 1.5 480p I2V напрямую из подключенных моделей Kaggle
+print("🎬 Загрузка HunyuanVideo 1.5 480p из локального репозитория...")
+LOCAL_MODEL_PATH = "/kaggle/input/HunyuanVideo-1.5-Diffusers-480p_i2v"
 
-# Загружаем в bfloat16 (стандарт для DiT-трансформеров) с автораспределением слоев
 pipe = DiffusionPipeline.from_pretrained(
     LOCAL_MODEL_PATH,
     torch_dtype=torch.bfloat16,
     device_map="auto",
-    local_files_only=True
+    local_files_only=True # Работаем полностью локально, без интернета!
 )
 
 # ВКЛЮЧАЕМ МАКСИМАЛЬНЫЙ ТЮНИНГ ДЛЯ БЕСПЛАТНОЙ КАРТЫ KAGGLE T4
