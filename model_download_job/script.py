@@ -8,19 +8,16 @@ print("=" * 70)
 print("📦 ЗАГРУЗЧИК МОДЕЛИ В ДАТАСЕТ KAGGLE")
 print("=" * 70)
 
-# Читаем конфиг
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, "model_config.json")
+# ==========================================================
+# НАСТРОЙКИ (меняйте здесь при необходимости)
+# ==========================================================
+MODEL_ID = "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v"
+DATASET_NAME = "hunyuan15-480p-model"
+DATASET_ID = f"avonosu/{DATASET_NAME}"
+# ==========================================================
 
-if not os.path.exists(config_path):
-    print("❌ model_config.json не найден!")
-    sys.exit(1)
-
-with open(config_path, "r") as f:
-    config = json.load(f)['model']
-
-print(f"🎯 Модель: {config['repo_id']}")
-print(f"📦 Датасет: {config['dataset_id']}")
+print(f"🎯 Модель: {MODEL_ID}")
+print(f"📦 Датасет: {DATASET_ID}")
 
 # Устанавливаем зависимости
 print("\n📦 Устанавливаем зависимости...")
@@ -29,16 +26,16 @@ subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "huggingfac
 from huggingface_hub import snapshot_download
 
 # Скачиваем модель
-print("\n⏳ Скачивание модели... (5-15 минут, зависит от размера)")
-model_dir = f"/kaggle/working/{config['name']}"
+print("\n⏳ Скачивание модели... (5-15 минут)")
+model_dir = f"/kaggle/working/model"
 os.makedirs(model_dir, exist_ok=True)
 
 try:
     snapshot_download(
-        repo_id=config['repo_id'],
+        repo_id=MODEL_ID,
         local_dir=model_dir,
         max_workers=4,
-        ignore_patterns=["*.bin", "*.msgpack"]  # Экономим место
+        ignore_patterns=["*.bin", "*.msgpack"]
     )
     print("✅ Модель успешно скачана!")
 except Exception as e:
@@ -48,10 +45,10 @@ except Exception as e:
 # Создаём metadata для датасета
 print("\n📝 Создаём metadata...")
 metadata = {
-    "title": config['name'],
-    "id": config['dataset_id'],
+    "title": DATASET_NAME,
+    "id": DATASET_ID,
     "licenses": [{"name": "Apache-2.0"}],
-    "description": f"Model: {config['repo_id']}"
+    "description": f"Model: {MODEL_ID}"
 }
 with open(f"{model_dir}/dataset-metadata.json", "w") as f:
     json.dump(metadata, f, indent=2)
@@ -67,11 +64,11 @@ except Exception as e:
     print(f"⚠️ Ошибка: {e}")
 
 # Загрузка датасета в Kaggle
-print(f"\n📤 Загрузка датасета {config['dataset_id']} в Kaggle...")
+print(f"\n📤 Загрузка датасета {DATASET_ID} в Kaggle...")
 os.chdir(model_dir)
 
 # Проверяем, существует ли уже датасет
-status = subprocess.run(['kaggle', 'datasets', 'status', config['dataset_id']], 
+status = subprocess.run(['kaggle', 'datasets', 'status', DATASET_ID], 
                        capture_output=True, text=True)
 
 if "404" in status.stderr or "not found" in status.stderr.lower():
@@ -87,5 +84,5 @@ else:
 
 print("\n" + "=" * 70)
 print("🎉 ГОТОВО!")
-print(f"📦 Датасет: {config['dataset_id']}")
+print(f"📦 Датасет: {DATASET_ID}")
 print("=" * 70)
