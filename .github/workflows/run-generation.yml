@@ -33,11 +33,11 @@ jobs:
       - name: Запуск генерации на Kaggle
         run: |
           # Проверяем, что папка notebook существует
-          if [ -d "./notebook" ]; then
-            echo "Папка notebook найдена, запускаю..."
-            kaggle kernels push -p ./notebook
+          if [ -d "./video_download_job" ]; then
+            echo "Папка video_download_job найдена, запускаю..."
+            kaggle kernels push -p ./video_download_job
           else
-            echo "❌ Ошибка: папка 'notebook' не найдена!"
-            echo "Создай папку 'notebook' и положи туда твой .ipynb файл"
+            echo "❌ Ошибка: папка 'video_download_job' не найдена!"
+            echo "Создай папку 'video_download_job' и положи туда твой .ipynb файл"
             exit 1
           fi
