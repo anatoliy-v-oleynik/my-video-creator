@@ -1,6 +1,6 @@
 {
-  "id": "avonosu/my-video-creator",
-  "title": "my-video-creator",
+  "id": "avonosu/my-video-creator-v1",
+  "title": "my-video-creator-v1",
   "code_file": "script.py",
   "language": "python",
   "kernel_type": "script",
