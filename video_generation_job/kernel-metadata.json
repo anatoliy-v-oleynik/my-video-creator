@@ -1,18 +1,17 @@
 {
-  "id": "avonosu/my-video-generation",
-  "title": "my-video-generation",
+  "id": "avonosu/my-video-creator-script",
+  "title": "my-video-creator-script",
   "code_file": "script.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
-  "enable_gpu": "true",
+  "accelerator": "gpu",
   "gpu_type": "T4x2",
-  "enable_tpu": "false",
   "enable_internet": "true",
-  "model_sources": [
-    "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v"
-  ],
+  "dataset_sources": [],
   "competition_sources": [],
   "kernel_sources": [],
-  "model_sources": []
+  "model_sources": [
+    "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v"
+  ]
 }
