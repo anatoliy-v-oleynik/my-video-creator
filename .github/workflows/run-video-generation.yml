@@ -6,9 +6,15 @@ on:
   workflow_dispatch:
     inputs:
       prompt:
-        description: 'Что генерируем?'
+        description: 'Что генерируем (Сценарий движения)?'
         required: true
         type: string
+        default: 'The background starts moving beautifully, high quality'
+      image_url:
+        description: 'Ссылка на картинку для оживления (Прямая ссылка на PNG/JPG)'
+        required: true
+        type: string
+        default: 'https://githubusercontent.com'
 
 jobs:
   build:
@@ -24,20 +30,28 @@ jobs:
           KAGGLE_SECRET_DATA: ${{ secrets.KAGGLE_JSON }}
         run: |
           mkdir -p ~/.kaggle
-          # Записываем переменную окружения напрямую в файл без использования echo
           printf "%s" "$KAGGLE_SECRET_DATA" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           pip install kaggle
           
-      # 3. Отправляем команду на завод (Kaggle)
+      # 3. Автоматически вшиваем промпт и ссылку в script.py перед отправкой
+      - name: Подставить промпт и ссылку на картинку в код
+        run: |
+          # Заменяем дефолтный текст промпта в script.py на то, что ввёл пользователь
+          sed -i 's|^PROMPT = .*|PROMPT = """${{ github.event.inputs.prompt }}"""|' ./video_generation_job/script.py
+          
+          # Заменяем дефолтную ссылку на картинку в script.py на то, что ввёл пользователь
+          sed -i 's|^IMAGE_URL = .*|IMAGE_URL = """${{ github.event.inputs.image_url }}"""|' ./video_generation_job/script.py
+          
+          echo "✅ Данные успешно вшиты в script.py!"
+
+      # 4. Отправляем команду на завод (Kaggle)
       - name: Запуск генерации на Kaggle
         run: |
-          # Проверяем, что папка notebook существует
           if [ -d "./video_generation_job" ]; then
             echo "Папка video_generation_job найдена, запускаю..."
             kaggle kernels push -p ./video_generation_job
           else
             echo "❌ Ошибка: папка 'video_generation_job' не найдена!"
-            echo "Создай папку 'video_generation_job' и положи туда твой .ipynb файл"
             exit 1
           fi
