@@ -1,0 +1,24 @@
+{
+  "models": [
+    {
+      "name": "hunyuan-video-1.5-480p",
+      "display_name": "HunyuanVideo 1.5 480p I2V",
+      "repo_type": "huggingface",
+      "repo_id": "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v",
+      "dataset_id": "avonosu/hunyuan15-480p-model",
+      "description": "Image-to-Video model for 480p generation",
+      "enabled": true,
+      "ignore_patterns": ["*.bin", "*.msgpack"]
+    },
+    {
+      "name": "hunyuan-video-1.5-720p",
+      "display_name": "HunyuanVideo 1.5 720p I2V",
+      "repo_type": "huggingface",
+      "repo_id": "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-720p_i2v_distilled",
+      "dataset_id": "avonosu/hunyuan15-720p-model",
+      "description": "Image-to-Video model for 720p generation (requires more VRAM)",
+      "enabled": false,
+      "ignore_patterns": ["*.bin", "*.msgpack"]
+    }
+  ]
+}
