@@ -9,23 +9,29 @@ from diffusers import DiffusionPipeline
 from diffusers.utils import load_image, export_to_video
 
 # 1. Настройка промпта (перезаписывается через GitHub Actions)
+# ЭТИ ДВЕ СТРОЧКИ GITHUB ACTIONS БУДЕТ АВТОМАТИЧЕСКИ ПЕРЕЗАПИСЫВАТЬ ПРИ КАЖДОМ НАЖАТИИ КНОПКИ!
 PROMPT = "The wind picks up, the hair starts to flutter softly, cinematically"
 print(f"🎯 Сценарий анимации: {PROMPT}")
+IMAGE_URL = "https://githubusercontent.com"
+print(f"🎯 Адрес изображения: {IMAGE_URL}")
 
 # 2. Загрузка стартового изображения
 # Скрипт ищет файл input_image.png, который вы закинули в репозиторий
-IMAGE_PATH = "./input_image.png"
-if not os.path.exists(IMAGE_PATH):
-    print(f"❌ Ошибка: файл {IMAGE_PATH} не найден в папке проекта!")
-    # Если картинки нет, создадим тестовую заглушку, чтобы код не падал
-    from PIL import Image, ImageDraw
-    img = Image.new('RGB', (720, 480), color = (73, 109, 137))
-    d = ImageDraw.Draw(img)
-    d.text((10,10), "Test Image", fill=(255,255,0))
-    img.save(IMAGE_PATH)
+IMAGE_PATH = "/kaggle/working/input_image.png"
 
-image = load_image(IMAGE_PATH)
-print("🖼️ Стартовое изображение успешно загружено")
+try:
+    # Скачиваем файл по ссылке и сохраняем на сверхбыстрый диск Kaggle
+    urllib.request.urlretrieve(IMAGE_URL, IMAGE_PATH)
+    print("📥 Картинка успешно скачана в облако!")
+    image = load_image(IMAGE_PATH)
+except Exception as e:
+    print(f"❌ Не удалось скачать картинку по ссылке, использую заглушку. Ошибка: {e}")
+    from PIL import Image, ImageDraw
+    image = Image.new('RGB', (720, 480), color = (73, 109, 137))
+    d = ImageDraw.Draw(image)
+    d.text((10,10), "Error Image", fill=(255,255,0))
+
+print("🖼️ Стартовое изображение готово к анимации!")
 
 # Загружаем модель HunyuanVideo 1.5 480p I2V напрямую из подключенных моделей Kaggle
 print("🎬 Загрузка HunyuanVideo 1.5 480p из локального репозитория...")
