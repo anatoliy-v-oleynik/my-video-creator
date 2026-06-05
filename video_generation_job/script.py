@@ -9,6 +9,12 @@ import torch
 # Устанавливаем accelerate (нужен для cpu_offload)
 import subprocess
 import sys
+
+
+# ==========================================================
+# КРИТИЧЕСКИ ВАЖНО: Установка accelerate ДО загрузки модели
+# ==========================================================
+print("📦 Устанавливаем accelerate для cpu_offload...")
 subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "accelerate"])
 
 from diffusers import HunyuanVideo15ImageToVideoPipeline
