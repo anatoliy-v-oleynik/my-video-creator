@@ -21,10 +21,10 @@ jobs:
           
       - name: Запуск скачивания на Kaggle
         run: |
-          if [ -d "./video_download_job" ]; then
-            kaggle kernels push -p ./video_download_job
+          if [ -d "./model_download_job" ]; then
+            kaggle kernels push -p ./model_download_job
             echo "🚀 Процесс скачивания запущен на Kaggle! Зайдите в ваш аккаунт Kaggle Datasets через 10-15 минут."
           else
-            echo "❌ Ошибка: папка 'video_download_job' не найдена!"
+            echo "❌ Ошибка: папка 'model_download_job' не найдена!"
             exit 1
           fi
