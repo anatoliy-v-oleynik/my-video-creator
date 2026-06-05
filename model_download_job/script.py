@@ -3,25 +3,56 @@ import json
 import subprocess
 import shutil
 
-print("📥 Начинаем скачивание оригинальной тяжелой модели HunyuanVideo 1.5...")
+print("📥 Начинаем обход дисковых квот Kaggle для скачивания HunyuanVideo...")
 subprocess.run(["pip", "install", "-q", "huggingface_hub"])
-from huggingface_hub import snapshot_download
+from huggingface_hub import hf_hub_download
 
-# Создаем временную папку для скачивания полной модели
-TEMP_DIR = "/kaggle/working/hunyuan_full"
-os.makedirs(TEMP_DIR, exist_ok=True)
+# МАГИЯ: Переносим системный кэш во временный раздел /tmp, где нет жестких ограничений рабочей папки
+os.environ["HF_HOME"] = "/tmp/hf_cache"
 
-print("⏳ Скачивание оригинальных весов напрямую с Hugging Face... Пожалуйста, подождите.")
-# Качаем официальную полную модель Tencent
-snapshot_download(
-    repo_id="tencent/HunyuanVideo",
-    local_dir=TEMP_DIR,
-    max_workers=4,
-    local_files_only=False
-)
-print("✅ Полная оригинальная модель успешно скачана во временную папку!")
+# Создаем финальные папки для частей модели
+BASE_DIR = "/kaggle/working"
+TRANSFORMER_DIR = f"{BASE_DIR}/hunyuan-transformer"
+ENCODERS_DIR = f"{BASE_DIR}/hunyuan-text-encoders"
+VAE_DIR = f"{BASE_DIR}/hunyuan-vae"
 
-# Подготовка авторизации Kaggle CLI для пуша
+os.makedirs(TRANSFORMER_DIR, exist_ok=True)
+os.makedirs(ENCODERS_DIR, exist_ok=True)
+os.makedirs(VAE_DIR, exist_ok=True)
+
+REPO = "tencent/HunyuanVideo"
+
+# Точный список файлов оригинальной модели, которые нам нужны
+files_to_download = [
+    # Главные веса трансформера (качаем в отдельный датасет)
+    {"repo_path": "hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt", "target": f"{TRANSFORMER_DIR}/mp_rank_00_model_states.pt"},
+    {"repo_path": "hunyuan-video-t2v-720p/transformers/config.json", "target": f"{TRANSFORMER_DIR}/config.json"},
+    
+    # Текстовые энкодеры LLM (в свой датасет)
+    {"repo_path": "text_encoder/config.json", "target": f"{ENCODERS_DIR}/config.json"},
+    {"repo_path": "text_encoder_2/config.json", "target": f"{ENCODERS_DIR}/config_2.json"},
+    
+    # Видео VAE (в свой датасет)
+    {"repo_path": "hunyuan-video-t2v-720p/vae/pytorch_model.bin", "target": f"{VAE_DIR}/pytorch_model.bin"},
+    {"repo_path": "hunyuan-video-t2v-720p/vae/config.json", "target": f"{VAE_DIR}/config.json"}
+]
+
+# Качаем файлы ПО ОЧЕРЕДИ, чтобы диск не переполнялся в процессе
+for f in files_to_download:
+    print(f"⏳ Скачиваю файл: {f['repo_path']}...")
+    try:
+        downloaded_path = hf_hub_download(
+            repo_id=REPO,
+            filename=f["repo_path"],
+            cache_dir="/tmp/hf_cache"
+        )
+        # Сразу перемещаем файл в нужную целевую папку
+        shutil.move(downloaded_path, f["target"])
+        print(f"✅ Файл успешно сохранен в {f['target']}")
+    except Exception as e:
+        print(f"❌ Сбой при скачивании {f['repo_path']}: {e}")
+
+# Подготовка авторизации Kaggle CLI
 os.makedirs("/root/.kaggle", exist_ok=True)
 try:
     shutil.copy("/kaggle/input/kaggle-api-secret/kaggle.json", "/root/.kaggle/kaggle.json")
@@ -29,36 +60,26 @@ try:
 except:
     pass
 
-# Функция для автоматического создания под-датасетов (чтобы обойти лимит 20 ГБ)
-def create_kaggle_dataset(folder_name, source_path):
-    target_dir = f"/kaggle/working/{folder_name}"
-    os.makedirs(target_dir, exist_ok=True)
-    
-    # Переносим файлы
-    shutil.move(source_path, target_dir)
-    
-    # Создаем метаданные
+# Функция публикации части на Kaggle
+def upload_part(folder_name, path):
     metadata = {
       "title": folder_name,
       "id": f"avonosu/{folder_name}",
       "licenses": [{"name": "CC0-1.0"}]
     }
-    with open(f"{target_dir}/dataset-metadata.json", "w") as f:
+    with open(f"{path}/dataset-metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
         
-    print(f"📤 Отправка части {folder_name} в Kaggle...")
+    print(f"📤 Публикация датасета {folder_name}...")
     status = subprocess.run(['kaggle', 'datasets', 'status', f'avonosu/{folder_name}'], capture_output=True, text=True)
     if "not found" in status.stderr.lower() or status.returncode != 0:
-        subprocess.run(['kaggle', 'datasets', 'create', '-p', target_dir, '-r']) 
+        subprocess.run(['kaggle', 'datasets', 'create', '-p', path, '-r']) 
     else:
-        subprocess.run(['kaggle', 'datasets', 'version', '-p', target_dir, '-m', "Update partition"])
+        subprocess.run(['kaggle', 'datasets', 'version', '-p', path, '-m', "Update weights"])
 
-# Разрезаем модель на 3 логические части (Текстовые энкодеры, VAE и сам Трансформер)
-if os.path.exists(f"{TEMP_DIR}/transformer"):
-    create_kaggle_dataset("hunyuan-transformer", f"{TEMP_DIR}/transformer")
-if os.path.exists(f"{TEMP_DIR}/text_encoder"):
-    create_kaggle_dataset("hunyuan-text-encoders", f"{TEMP_DIR}/text_encoder")
-if os.path.exists(f"{TEMP_DIR}/vae"):
-    create_kaggle_dataset("hunyuan-vae", f"{TEMP_DIR}/vae")
+# Отправляем три готовые части в ваш аккаунт
+upload_part("hunyuan-transformer", TRANSFORMER_DIR)
+upload_part("hunyuan-text-encoders", ENCODERS_DIR)
+upload_part("hunyuan-vae", VAE_DIR)
 
-print("🎉 Магия завершена! Все части оригинальной модели Tencent теперь в вашем профиле!")
+print("🎉 Все процессы завершены! Проверьте вкладку Datasets на Kaggle.")
