@@ -14,7 +14,7 @@ on:
         description: 'Ссылка на картинку для оживления (Прямая ссылка на PNG/JPG)'
         required: true
         type: string
-        default: 'https://githubusercontent.com'
+        default: 'https://github.com/anatoliy-v-oleynik/my-video-creator/blob/main/video_generation_job/input_image.png?raw=true'
 
 jobs:
   build:
