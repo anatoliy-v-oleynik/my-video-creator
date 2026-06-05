@@ -1,168 +1,29 @@
-name: '1. Подготовить датасет Hunyuan'
+name: '1. Скачать модель в датасет'
 
 on:
   workflow_dispatch:
     inputs:
-      model_to_download:
-        description: '📦 Выберите модель для скачивания'
-        required: true
-        type: choice
-        options: []
-        default: ''
-      force_redownload:
-        description: '🔄 Перескачать даже если уже есть?'
+      model_url:
+        description: |
+          🔗 Hugging Face URL или ID модели
+          
+          Примеры:
+          - hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v
+          - runwayml/stable-diffusion-v1-5
+          - https://huggingface.co/stabilityai/stable-video-diffusion-img2vid
+          
+          (Оставьте пустым для модели по умолчанию)
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: 'hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v'
+      dataset_name:
+        description: '📦 Название датасета (куда сохранить модель)'
+        required: false
+        type: string
+        default: 'hunyuan15-480p-model'
 
 jobs:
-  # Сначала читаем models_config.json и формируем список
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      models_json: ${{ steps.read_config.outputs.models }}
-      model_names: ${{ steps.make_choice.outputs.model_names }}
-      default_model: ${{ steps.make_choice.outputs.default_model }}
-    steps:
-      - name: Получить репозиторий
-        uses: actions/checkout@v4
-      
-      - name: Прочитать models_config.json
-        id: read_config
-        run: |
-          # Читаем конфиг
-          CONFIG=$(cat ./model_download_job/models_config.json)
-          
-          # Экранируем для JSON
-          CONFIG_ESCAPED=$(echo "$CONFIG" | jq -c .)
-          
-          echo "models=$CONFIG_ESCAPED" >> $GITHUB_OUTPUT
-          
-          # Выводим список моделей для отладки
-          echo "📋 Модели в конфиге:"
-          echo "$CONFIG" | jq -r '.models[].display_name'
-      
-      - name: Сформировать выпадающий список
-        id: make_choice
-        run: |
-          # Извлекаем имена моделей в формате "name|display_name"
-          MODELS=$(cat ./model_download_job/models_config.json | jq -r '.models[] | "\(.name)|\(.display_name)"')
-          
-          # Создаём строку для GitHub Actions choice
-          CHOICE_OPTIONS=""
-          DEFAULT_MODEL=""
-          FIRST=true
-          
-          while IFS= read -r model; do
-            NAME=$(echo "$model" | cut -d'|' -f1)
-            DISPLAY=$(echo "$model" | cut -d'|' -f2)
-            
-            # Добавляем в список
-            if [ -n "$CHOICE_OPTIONS" ]; then
-              CHOICE_OPTIONS="$CHOICE_OPTIONS,$NAME"
-            else
-              CHOICE_OPTIONS="$NAME"
-              DEFAULT_MODEL="$NAME"
-            fi
-            
-            echo "   - $NAME: $DISPLAY"
-          done <<< "$MODELS"
-          
-          # Добавляем опцию "all-models"
-          CHOICE_OPTIONS="$CHOICE_OPTIONS,all-models"
-          
-          echo "model_names=$CHOICE_OPTIONS" >> $GITHUB_OUTPUT
-          echo "default_model=$DEFAULT_MODEL" >> $GITHUB_OUTPUT
-          echo "✅ Сформировано ${#CHOICE_OPTIONS} вариантов"
-      
-      - name: Обновить workflow с динамическим списком
-        run: |
-          # Создаём временный файл с обновлённым workflow
-          cat > .github/workflows/run-model-download-temp.yml << 'EOF'
-          name: '1. Подготовить датасет Hunyuan'
-          on:
-            workflow_dispatch:
-              inputs:
-                model_to_download:
-                  description: '📦 Выберите модель для скачивания'
-                  required: true
-                  type: choice
-                  options: [${{ steps.make_choice.outputs.model_names }}]
-                  default: '${{ steps.make_choice.outputs.default_model }}'
-                force_redownload:
-                  description: '🔄 Перескачать даже если уже есть?'
-                  required: false
-                  type: boolean
-                  default: false
-          jobs:
-            prepare-dataset:
-              runs-on: ubuntu-latest
-              steps:
-                - name: Получить репозиторий
-                  uses: actions/checkout@v4
-                - name: Настройка Kaggle API
-                  env:
-                    KAGGLE_SECRET_DATA: \${{ secrets.KAGGLE_JSON }}
-                  run: |
-                    mkdir -p ~/.kaggle
-                    printf "%s" "\$KAGGLE_SECRET_DATA" > ~/.kaggle/kaggle.json
-                    chmod 600 ~/.kaggle/kaggle.json
-                    pip install kaggle
-                - name: Создать конфиг с выбранной моделью
-                  run: |
-                    cd ./model_download_job
-                    python3 << PYTHON
-                    import json
-                    with open('models_config.json', 'r') as f:
-                        config = json.load(f)
-                    
-                    # Отключаем все модели
-                    for model in config['models']:
-                        model['enabled'] = False
-                    
-                    selected = '\${{ github.event.inputs.model_to_download }}'
-                    force = '\${{ github.event.inputs.force_redownload }}' == 'true'
-                    
-                    if selected == 'all-models':
-                        for model in config['models']:
-                            model['enabled'] = True
-                            if force:
-                                model['force'] = True
-                    else:
-                        for model in config['models']:
-                            if model['name'] == selected:
-                                model['enabled'] = True
-                                if force:
-                                    model['force'] = True
-                                break
-                    
-                    with open('models_config.json', 'w') as f:
-                        json.dump(config, f, indent=2)
-                    
-                    print(f"✅ Включена модель: {selected}")
-                    PYTHON
-                - name: Запуск скачивания на Kaggle
-                  run: |
-                    if [ -d "./model_download_job" ]; then
-                      echo "🚀 Запускаем скачивание \${{ github.event.inputs.model_to_download }}..."
-                      kaggle kernels push -p ./model_download_job
-                      echo "✅ Процесс запущен!"
-                    else
-                      echo "❌ Папка model_download_job не найдена!"
-                      exit 1
-                    fi
-          EOF
-          
-          echo "✅ Временный workflow создан"
-      
-      - name: Заменить workflow динамической версией
-        run: |
-          mv .github/workflows/run-model-download-temp.yml .github/workflows/run-model-download.yml
-          echo "✅ Workflow обновлён динамическим списком моделей"
-
-  # Основной job (запускается после обновления)
   prepare-dataset:
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - name: Получить репозиторий
@@ -176,48 +37,40 @@ jobs:
           printf "%s" "$KAGGLE_SECRET_DATA" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           pip install kaggle
-      
-      - name: Создать конфиг с выбранной моделью
+          
+      - name: Создать конфиг для скачивания
         run: |
           cd ./model_download_job
-          python3 << PYTHON
-          import json
-          with open('models_config.json', 'r') as f:
-              config = json.load(f)
           
-          for model in config['models']:
-              model['enabled'] = False
+          # Получаем URL модели (очищаем от лишнего)
+          MODEL_URL="${{ github.event.inputs.model_url }}"
+          DATASET_NAME="${{ github.event.inputs.dataset_name }}"
           
-          selected = '${{ github.event.inputs.model_to_download }}'
-          force = '${{ github.event.inputs.force_redownload }}' == 'true'
+          # Убираем https://huggingface.co/ если есть
+          MODEL_ID=$(echo "$MODEL_URL" | sed 's|https://huggingface.co/||g')
           
-          if selected == 'all-models':
-              for model in config['models']:
-                  model['enabled'] = True
-                  if force:
-                      model['force'] = True
-          else:
-              for model in config['models']:
-                  if model['name'] == selected:
-                      model['enabled'] = True
-                      if force:
-                          model['force'] = True
-                      break
+          echo "🎯 Модель: $MODEL_ID"
+          echo "📦 Датасет: avonosu/$DATASET_NAME"
           
-          with open('models_config.json', 'w') as f:
-              json.dump(config, f, indent=2)
+          # Создаём временный конфиг
+          cat > model_config.json << EOF
+          {
+            "model": {
+              "name": "$DATASET_NAME",
+              "repo_id": "$MODEL_ID",
+              "dataset_id": "avonosu/$DATASET_NAME",
+              "enabled": true
+            }
+          }
+          EOF
           
-          print(f"📋 Включена модель: {selected}")
-          print(f"🔄 Force redownload: {force}")
-          PYTHON
+          echo "✅ Конфиг создан:"
+          cat model_config.json
           
-          echo "📄 Конфиг после обновления:"
-          cat models_config.json
-      
       - name: Запуск скачивания на Kaggle
         run: |
           if [ -d "./model_download_job" ]; then
-            echo "🚀 Запускаем скачивание ${{ github.event.inputs.model_to_download }} на Kaggle..."
+            echo "🚀 Запускаем скачивание модели..."
             kaggle kernels push -p ./model_download_job
             echo "✅ Процесс запущен!"
             echo "📊 Следите за прогрессом: https://www.kaggle.com/avonosu/model-downloader"
